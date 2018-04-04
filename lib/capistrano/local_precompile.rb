@@ -9,7 +9,6 @@ namespace :load do
 
     after "bundler:install", "deploy:assets:prepare"
     after "deploy:updated', 'deploy:assets:update"
-    #before "deploy:assets:symlink", "deploy:assets:remove_manifest"
     after "deploy:assets:prepare", "deploy:assets:cleanup"
   end
 end
@@ -20,18 +19,12 @@ namespace :deploy do
 
   namespace :assets do
 
-    # desc "Remove manifest file from remote server"
-    # task :remove_manifest do
-    #   with rails_env: fetch(:assets_dir) do
-    #     execute "rm -f #{shared_path}/#{shared_assets_prefix}/manifest*"
-    #   end
-    # end
-
     desc "Remove all local precompiled assets"
     task :cleanup do
       run_locally do
         with rails_env: fetch(:precompile_env) do
           execute "rm -rf", fetch(:assets_dir)
+          execute "rm -rf", fetch(:packs_dir)
         end
       end
     end
@@ -40,8 +33,8 @@ namespace :deploy do
     task :prepare do
       run_locally do
         with rails_env: fetch(:precompile_env) do
-          execute "rake assets:clean"
-          execute "rake assets:precompile"
+          execute "rails assets:clean"
+          execute "rails assets:precompile"
         end
       end
     end
