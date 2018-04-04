@@ -4,12 +4,8 @@ namespace :load do
   task :defaults do
     set :precompile_env,   fetch(:rails_env) || 'production'
     set :assets_dir,       "public/assets"
-    set :packs_dir,        "public/packs"    
+    set :packs_dir,        "public/packs"
     set :rsync_cmd,        "rsync -av --delete"
-
-    after "bundler:install", "deploy:assets:prepare"
-    after "deploy:updated', 'deploy:assets:update"
-    after "deploy:assets:prepare", "deploy:assets:cleanup"
   end
 end
 
@@ -33,23 +29,34 @@ namespace :deploy do
     task :prepare do
       run_locally do
         with rails_env: fetch(:precompile_env) do
-          execute "rails assets:clean"
-          execute "rails assets:precompile"
+          unless dry_run?
+            execute "bundle exec rails assets:clean"
+            execute "bundle exec rails assets:precompile"
+          end
         end
       end
     end
 
     desc "Performs rsync to app servers"
     task :update do
-      on roles(fetch(:assets_role)) do
+      run_locally do
+        roles(fetch(:assets_roles)).each do |host|
+          assets_command = "#{fetch(:rsync_cmd)} ./#{fetch(:assets_dir)}/ #{host.user}@#{host.hostname}:#{fetch(:release_path)}/#{fetch(:assets_dir)}/"
+          packs_command = "#{fetch(:rsync_cmd)} ./#{fetch(:packs_dir)}/ #{host.user}@#{host.hostname}:#{fetch(:release_path)}/#{fetch(:packs_dir)}/"
 
-        local_manifest_path = run_locally "ls #{assets_dir}/manifest*"
-        local_manifest_path.strip!
-
-        run_locally "#{fetch(:rsync_cmd)} ./#{fetch(:assets_dir)}/ #{user}@#{server}:#{release_path}/#{fetch(:assets_dir)}/"
-        run_locally "#{fetch(:rsync_cmd)} ./#{fetch(:packs_dir)}/ #{user}@#{server}:#{release_path}/#{fetch(:packs_dir)}/"  #TODO: Check if exists      
-        run_locally "#{fetch(:rsync_cmd)} ./#{local_manifest_path} #{user}@#{server}:#{release_path}/assets_manifest#{File.extname(local_manifest_path)}"
+          if dry_run?
+            puts assets_command
+            puts packs_command
+          else
+            execute assets_command
+            execute packs_command
+          end
+        end
       end
     end
   end
+
+  after "bundler:install", "deploy:assets:prepare"
+  after "deploy:updated", "deploy:assets:update"
+  after "deploy:assets:update", "deploy:assets:cleanup"
 end
