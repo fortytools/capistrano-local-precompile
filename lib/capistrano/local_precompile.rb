@@ -8,6 +8,7 @@ namespace :load do
     set :rsync_cmd,        "rsync -av --delete"
 
     after "bundler:install", "deploy:assets:prepare"
+    after "deploy:updated', 'deploy:assets:update"
     #before "deploy:assets:symlink", "deploy:assets:remove_manifest"
     after "deploy:assets:prepare", "deploy:assets:cleanup"
   end
@@ -15,7 +16,7 @@ end
 
 namespace :deploy do
   # Clear existing task so we can replace it rather than "add" to it.
-  Rake::Task["deploy:assets:precompile"].clear
+  Rake::Task["deploy:compile_assets"].clear
 
   namespace :assets do
 
@@ -46,7 +47,7 @@ namespace :deploy do
     end
 
     desc "Performs rsync to app servers"
-    task :precompile do
+    task :update do
       on roles(fetch(:assets_role)) do
 
         local_manifest_path = run_locally "ls #{assets_dir}/manifest*"
