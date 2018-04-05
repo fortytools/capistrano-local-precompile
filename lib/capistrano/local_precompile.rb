@@ -46,10 +46,14 @@ namespace :deploy do
 
           if dry_run?
             puts assets_command
-            puts packs_command
+            if File.exists? fetch(:packs_dir)
+              puts packs_command
+            end
           else
             execute assets_command
-            execute packs_command
+            if File.exists? fetch(:packs_dir)
+              execute packs_command
+            end
           end
         end
       end
